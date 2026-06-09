@@ -108,15 +108,46 @@ PRB
 }
 
 # Camera-side symbol check for one model's REQUIRED_SYMBOLS (passed as $1).
+#
+# The hooked C++ getters are resolved DYNAMICALLY (that is the whole reason an
+# LD_PRELOAD shim can interpose them), so their mangled names may live in a
+# shared library the streamer loads rather than in /bin/ubnt_streamer itself.
+# Grepping only the main binary therefore gives false MISSING (seen on real
+# G6O hardware: rotation works while both symbols report missing). Scan the
+# binary AND every library mapped by the running streamer process — excluding
+# /etc/persistent/* (our own rot90.so defines the same names and would
+# trivially match).
 symbols_script() {
 cat <<SYM
 BIN=/bin/ubnt_streamer
 [ -f /etc/persistent/realbin/ubnt_streamer ] && BIN=/etc/persistent/realbin/ubnt_streamer
-# NUL->newline so grep sees the binary's C-string symbol table as TEXT.
+# Wrapper guard: while the hook is active /bin/ubnt_streamer is a bind-mounted
+# SHELL WRAPPER, and a past mishap (e.g. cfgmtd persistence wipe with the
+# mount still active) can leave that same wrapper captured in realbin. Symbols
+# can only be grepped out of a real ELF, so if the chosen file isn't one
+# (first bytes != \\x7fELF), fall back to the other candidate.
+elf() { [ "\$(head -c 4 "\$1" 2>/dev/null | tail -c 3)" = "ELF" ]; }
+if ! elf "\$BIN"; then
+  if [ "\$BIN" = "/bin/ubnt_streamer" ]; then BIN=/etc/persistent/realbin/ubnt_streamer; else BIN=/bin/ubnt_streamer; fi
+fi
+elf "\$BIN" || echo "NOELF no real streamer ELF found (checked /bin + realbin)"
+CANDS="\$BIN"
+LIBS=""
+P="\$(pidof ubnt_streamer 2>/dev/null | sed 's/ .*//')"
+if [ -n "\$P" ]; then
+  LIBS="\$(sed -n 's/.*[[:space:]]\\(\\/[^ ]*\\.so[^ ]*\\)\$/\\1/p' /proc/\$P/maps 2>/dev/null | grep -v '^/etc/persistent/' | sort -u)"
+  CANDS="\$CANDS \$LIBS"
+fi
+echo "CHECKED \$BIN (\$(wc -c < "\$BIN" 2>/dev/null) bytes) + \$(echo "\$LIBS" | grep -c .) mapped libs"
+# NUL->newline so grep sees each file's C-string symbol table as TEXT.
 # busybox grep on a raw binary gives false negatives (and -qc leaks a count);
 # this is the same trick used for /proc/environ in check_script.
 for s in $1; do
-  if tr '\\0' '\\n' < "\$BIN" 2>/dev/null | grep -qF "\$s"; then echo "FOUND \$s"; else echo "MISSING \$s"; fi
+  found=0
+  for c in \$CANDS; do
+    if tr '\\0' '\\n' < "\$c" 2>/dev/null | grep -qF "\$s"; then found=1; break; fi
+  done
+  if [ "\$found" = 1 ]; then echo "FOUND \$s"; else echo "MISSING \$s"; fi
 done
 SYM
 }
@@ -224,7 +255,15 @@ echo '${SO_B64}'   | base64 -d > \$PB/rot90.so
 echo '${WRAP_B64}' | base64 -d > \$PB/streamer_wrap.sh
 chmod +x \$PB/streamer_wrap.sh
 mkdir -p \$PB/realbin
-[ -f \$PB/realbin/ubnt_streamer ] || { cp -f /bin/ubnt_streamer \$PB/realbin/ubnt_streamer; chmod +x \$PB/realbin/ubnt_streamer; }
+# Capture the REAL streamer ELF into realbin. Guard against capturing the
+# bind-mounted wrapper instead (would happen if realbin was lost, e.g. by a
+# persistence wipe, while the mount was still active): only (re)copy when the
+# source is an ELF. A wrapper-corrupted realbin heals on the next camera
+# reboot, when /bin/ubnt_streamer reverts to the real binary.
+elf() { [ "\$(head -c 4 "\$1" 2>/dev/null | tail -c 3)" = "ELF" ]; }
+if ! elf \$PB/realbin/ubnt_streamer && elf /bin/ubnt_streamer; then
+  cp -f /bin/ubnt_streamer \$PB/realbin/ubnt_streamer; chmod +x \$PB/realbin/ubnt_streamer
+fi
 echo ${HALLWAY_VALUE} > \$PB/hallway_val
 ISPC=0
 grep -q '"flip": ${ISP_FLIP}'     \$PB/ubnt_isp.conf || { sed -i 's/"flip": [0-9]*/"flip": ${ISP_FLIP}/'     \$PB/ubnt_isp.conf; ISPC=1; }

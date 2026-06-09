@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.1
+
+- Fix the false "hook symbols missing" warning, properly this time. The
+  hooked C++ getters resolve dynamically (that's why LD_PRELOAD can
+  interpose them), so their names can live in a shared library instead of
+  /bin/ubnt_streamer — grepping only the main binary reported MISSING on
+  hardware where rotation demonstrably works. The check now scans the
+  streamer binary plus all libraries mapped by the running process
+  (excluding our own rot90.so), guards against grepping the bind-mounted
+  wrapper script instead of the real ELF, and logs what it checked
+  (`CHECKED <path> ... + N mapped libs`).
+- Apply step now refuses to capture a non-ELF (i.e. the wrapper itself)
+  into realbin, and re-captures realbin if a past mishap corrupted it.
+
 ## 1.4.0
 
 - Switch to prebuilt images published on GHCR
