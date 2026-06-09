@@ -1,0 +1,6 @@
+# Local configuration with real credentials
+.env
+
+# Proprietary camera firmware libraries, pulled from the camera to build rot90.so.
+# Not redistributable; obtain from your own device (see the model's rot90.c header).
+unifi_doorbell_landscape/rotation/models/*/camlib/

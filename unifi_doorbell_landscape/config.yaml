@@ -1,0 +1,48 @@
+---
+version: 1.4.0
+name: UniFi Doorbell Landscape
+slug: unifi_doorbell_landscape
+description: >-
+  Force a UniFi Protect doorbell to landscape orientation. Overrides the
+  hardcoded portrait ("hallway") rotation at the camera via an LD_PRELOAD
+  hook, kept applied by an SSH watchdog. Includes a setup wizard that can
+  enable camera SSH and fetch the Recovery Code from your console.
+url: https://github.com/VVlasy/unifi-doorbell-landscape
+arch:
+  - amd64
+  - aarch64
+# Prebuilt by .github/workflows/builder.yaml; the version above must exist as
+# a tag on this image before users can update (publish first, then push the
+# version bump — or in the same push, the workflow finishes within minutes).
+image: ghcr.io/vvlasy/unifi-doorbell-landscape
+init: false
+startup: application
+boot: auto
+stage: stable
+# Needed so the setup wizard can persist the discovered Recovery Code into
+# these options and wipe the console password after use.
+hassio_api: true
+options:
+  model: auto
+  rotation: "90"
+  camera_ip: ""
+  camera_password: ""
+  console_host: ""
+  console_ssh_user: root
+  check_interval: 30
+schema:
+  # NOTE for contributors: adding a model folder under rotation/models/
+  # requires adding its id to this dropdown (see ADDING_A_MODEL.md).
+  model: list(auto|uvc_g6o_doorbell_lite)
+  # Single orientation control. Maps to the hallway-mode value + ISP flip in
+  # run.sh. "-90" and "90" are the two landscape directions (180 deg apart);
+  # pick whichever lands your mount upright.
+  rotation: list(none|90|-90)
+  camera_ip: str
+  camera_password: password
+  console_host: str
+  console_ssh_user: str
+  # Optional (no default) so the wizard can DELETE it after use without
+  # tripping schema validation. Trailing '?' = truly optional.
+  console_ssh_password: password?
+  check_interval: int(5,3600)

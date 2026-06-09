@@ -1,0 +1,45 @@
+configuration:
+  model:
+    name: Camera model
+    description: >-
+      'auto' probes the camera over SSH and picks the matching model build.
+      Pick a specific model only if auto-detection picks wrong.
+  camera_ip:
+    name: Camera IP
+    description: >-
+      LAN IP address of the UniFi doorbell. Leave empty to let the setup
+      wizard auto-pick it (works when you have exactly one doorbell).
+  camera_password:
+    name: Camera Recovery Code
+    description: >-
+      SSH password for user 'ubnt' on the camera (= the camera's Recovery
+      Code in UniFi Protect). Leave empty and fill the console fields below
+      to have the setup wizard fetch it automatically.
+  console_host:
+    name: UniFi console host (wizard)
+    description: >-
+      IP/hostname of your UniFi console (UDM/CloudKey). Only used by the
+      one-time setup wizard, which enables camera SSH and extracts the
+      Recovery Code from your newest Protect backup. Requires console SSH
+      to be enabled (UniFi OS -> Console Settings -> Advanced -> SSH).
+  console_ssh_user:
+    name: Console SSH user (wizard)
+    description: Usually 'root' on UniFi OS consoles.
+  console_ssh_password:
+    name: Console SSH password (wizard)
+    description: >-
+      Used ONCE by the setup wizard, then automatically wiped from this
+      configuration. Never stored long-term, never sent anywhere but your
+      console.
+  rotation:
+    name: Rotation
+    description: >-
+      Orientation forced on the camera. Pick whichever shows your scene
+      upright: "90" and "-90" are the two landscape directions (180° apart),
+      "No rotation" leaves it un-rotated. If none look right for your mount,
+      open an issue.
+  check_interval:
+    name: Check interval (seconds)
+    description: >-
+      How often the watchdog SSHes to the camera to check and re-apply the
+      fix after drift (e.g. a camera reboot).

@@ -1,0 +1,25 @@
+# Standalone deployment (no Home Assistant).
+# The same image the HA app uses; configuration comes from .env instead of
+# the HA options UI (run.sh falls back to plain env vars when /data/options.json
+# is absent).
+services:
+  doorbell-landscape:
+    build: ./unifi_doorbell_landscape
+    # Or use the prebuilt image instead of build:
+    # image: ghcr.io/vvlasy/unifi-doorbell-landscape:latest
+    container_name: unifi-doorbell-landscape
+    restart: unless-stopped
+    environment:
+      CAMERA_IP: ${CAMERA_IP:-}
+      CAMERA_SSH_PASS: ${CAMERA_SSH_PASS:-}
+      CAMERA_MODEL: ${CAMERA_MODEL:-auto}
+      ROTATION: ${ROTATION:-90}
+      # Advanced override of ROTATION (leave unset to use the mapping):
+      HALLWAY_VALUE: ${HALLWAY_VALUE:-}
+      ISP_FLIP: ${ISP_FLIP:-}
+      ISP_MIRROR: ${ISP_MIRROR:-}
+      ROTATION_CHECK_INTERVAL: ${ROTATION_CHECK_INTERVAL:-30}
+      # Setup wizard (standalone): used when CAMERA_SSH_PASS is empty.
+      CONSOLE_HOST: ${CONSOLE_HOST:-}
+      CONSOLE_SSH_USER: ${CONSOLE_SSH_USER:-root}
+      CONSOLE_SSH_PASS: ${CONSOLE_SSH_PASS:-}
